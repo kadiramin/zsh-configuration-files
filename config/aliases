@@ -1,0 +1,59 @@
+# zsh: true
+
+
+# --- Navigation ---
+alias ls='ls -G'
+alias l='ls -lah'
+alias ll='ls -lha'
+alias lsa='ls -alGH'
+alias l-d='ls -lad'
+alias ..='cd ..; ls'
+alias ...='cd ..; cd ..; ls'
+alias ....='cd ..; cd ..; cd ..; ls'
+alias cd..='cd ..'  # Single alias to go up one level
+alias here='open .'  # Open the current directory in Finder
+alias fcd='source ~/bin/fcd.sh'
+alias zshconfig='cd ~/.zsh && $EDITOR .'  # Open zsh config in editor
+
+# --- System & Utilities ---
+alias p='ps aux | grep'  # List processes and search with grep
+alias grep='gg'  # Avoid overriding default grep, use gg for colored grep
+alias top="top"
+alias cputop="top -o cpu"
+alias sz='du -ax | sort -n | tail -n 10'  # Largest files
+alias cls='printf "\33c\e[3J"'  # Clear the terminal screen
+alias up='brew update && brew upgrade'  # Update and upgrade Homebrew
+alias wget="wget --output-file=$HOME/.wget.log --append-output=$HOME/.wget.log"  # Log wget outputs
+alias cleanupmp4='find . -maxdepth 1 -type f ! -name "*.mp4" -delete'  # Clean up non-mp4 files
+alias historysummary="history | awk '{a[\$2]++} END{for(i in a){printf \"%5d\t%s\n\",a[i],i}}' | sort -rn | head"  # History summary
+alias :q=exit  # Quick exit alias
+
+# --- Applications ---
+alias chrome='open -a "Google Chrome"'
+alias firefox='open -a Firefox'
+alias ff='firefox'  # Shortcut for Firefox
+
+# --- Development (Git & Bundler) ---
+alias g='git'
+alias gs="git status"
+alias gg='git grep'  # Custom grep for git
+alias gpr='git stash && git pull --rebase && git stash pop'  # Pull with stash
+alias gb='git branch | p git checkout'  # Git branch switcher
+alias be='bundle exec'
+alias bu='bundle update'
+alias bi='bundle install'
+
+# --- FZF / History ---
+alias h='fzf_history'
+alias hh='fzf_history_edit'
+alias vl="edit_last_file"
+
+# --- Global Aliases (Piping) ---
+alias -g H='| head'
+alias -g T='| tail'
+alias -g G='| grep'
+
+# --- Suffix Aliases ---
+alias -s html='open -a "Google Chrome"'  # Open HTML files in Chrome
+alias -s {c,cpp}=runcpp  # Run C/C++ files with runcpp
+alias -s {gz,tgz,zip,lzh,bz2,tbz,Z,tar,arj,xz}=extract  # Extract common compressed files

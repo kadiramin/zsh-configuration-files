@@ -1,0 +1,37 @@
+# zsh: true
+
+# --- fzf Configuration ---
+# Source fzf completion and key-bindings if fzf is installed via Homebrew
+if [[ -d "/opt/homebrew/opt/fzf" ]]; then
+    source "/opt/homebrew/opt/fzf/shell/completion.zsh"  # Enable fzf tab completion
+    source "/opt/homebrew/opt/fzf/shell/key-bindings.zsh"  # Enable fzf key bindings
+fi
+
+# Default options for fzf (interactive fuzzy search)
+export FZF_DEFAULT_OPTS="--height 100% --extended --cycle --reverse --ansi --border"
+# Custom options for fzf when using Ctrl+T to open a file search preview (with bat for enhanced preview)
+export FZF_CTRL_T_OPTS='--preview "bat --color=always --style=header,grid --line-range :100 {}"'
+
+# --- Interactive GitHub PR Checkout using gh and fzf ---
+# This function lets you interactively select and checkout a GitHub pull request using the `gh` CLI and fzf
+function fzf-checkout-pull-request() {
+    # Ensure gh (GitHub CLI) is installed and authenticated
+    if (( ! $+commands[gh] )); then
+        echo "gh (GitHub CLI) is not installed. Install with: brew install gh"  # If gh is not installed, show a message
+        return
+    fi
+
+    # Fetch the list of pull requests from GitHub and allow the user to select one using fzf
+    local selected_pr_id=$(gh pr list --limit 100 | fzf --header "Select PR to Checkout" | awk '{ print $1 }')  # Get the PR ID from the selected PR
+
+    if [ -n "$selected_pr_id" ]; then
+        # If a PR is selected, fill the buffer with the command to checkout the PR
+        BUFFER="gh pr checkout ${selected_pr_id}"  # Set the buffer to the PR checkout command
+        zle accept-line  # Execute the command (simulates pressing Enter)
+    fi
+    zle reset-prompt  # Reset the Zsh prompt
+}
+
+# Register the widget for fzf-checkout-pull-request and bind it to Ctrl+G, Ctrl+P
+zle -N fzf-checkout-pull-request  # Register the function as a Zsh widget
+bindkey "^g^p" fzf-checkout-pull-request  # Bind the widget to the Ctrl+G, Ctrl+P key combination

@@ -1,0 +1,50 @@
+# zsh: true
+
+# 1. Language & Locale
+if [[ -z "$LANG" ]]; then
+    export LANG="en_US.UTF-8"
+fi
+
+# 2. macOS Path Helper (Initializes system paths)
+if [[ -x /usr/libexec/path_helper ]]; then
+    eval `/usr/libexec/path_helper -s`
+fi
+
+# 3. Homebrew Initialization (Only if Homebrew exists)
+if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif command -v brew >/dev/null 2>&1; then
+    eval "$(brew shellenv)"
+fi
+
+# Ensure ~/.local/bin is in PATH (for tools like Mise)
+export PATH="$HOME/.local/bin:$PATH"
+
+# 4. History Settings
+HISTFILE="${ZDOTDIR:-$HOME}/.zsh_history"
+HISTSIZE=5000
+SAVEHIST=5000
+setopt APPEND_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt SHARE_HISTORY
+
+# 5. Tool Version Manager (Mise)
+# This block will now work because ~/.local/bin is in the PATH
+if command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate zsh)"
+fi
+
+# 6. Prompt Initialization (Starship)
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+fi
+
+# 7. Manual Path Overrides (Ensure precedence in PATH)
+# Adding custom directories, e.g., for local Perl installations
+export PATH="$HOME/localperl/bin:$PATH" 
+
+# Set default editor (nvim in this case)
+export EDITOR='nvim'
+
+# Optional: Perl setup (if using Perl locally)
+# eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib=$HOME/perl5)"

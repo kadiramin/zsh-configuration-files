@@ -1,0 +1,139 @@
+# zsh: true
+
+# --- Extract Archives ---
+# This function extracts different types of archives (e.g., tar, zip, gz, etc.) based on the file extension
+function extract() {
+  if [ -f $1 ] ; then
+    # Check for different file extensions and use the corresponding extraction command
+    case $1 in
+      *.tar.gz|*.tgz) tar xzvf $1 ;;             # Handle .tar.gz and .tgz files
+      *.tar.xz)       tar Jxvf $1 ;;             # Handle .tar.xz files
+      *.zip)          unzip $1    ;;             # Handle .zip files
+      *.lzh)          lha e $1    ;;             # Handle .lzh files
+      *.tar.bz2|*.tbz) tar xjvf $1 ;;            # Handle .tar.bz2 and .tbz files
+      *.tar.Z)        tar zxvf $1 ;;             # Handle .tar.Z files
+      *.gz)           gunzip $1   ;;             # Handle .gz files
+      *.bz2)          bunzip2 $1  ;;             # Handle .bz2 files
+      *.Z)            uncompress $1 ;;           # Handle .Z files
+      *.tar)          tar xvf $1  ;;             # Handle .tar files
+      *.arj)          unarj $1    ;;             # Handle .arj files
+      *)              echo "'$1' cannot be extracted via extract()" ;; # Handle unknown file types
+    esac
+  else
+    echo "'$1' is not a valid file"  # If file doesn't exist, show error
+  fi
+}
+
+# --- Compile and Run C++ ---
+# This function compiles a C++ file with g++ and runs the resulting binary
+function runcpp() {
+  g++ -O2 "$1" -o "${1%.*}" && ./"${1%.*}"  # Compile and run the C++ source file
+}
+
+# --- Create and Enter Directory ---
+# This function creates a new directory and changes into it
+mcd() {
+    mkdir -p "$@" && cd "$_"  # Create the directory and immediately enter it
+}
+
+# --- Add All Private SSH Keys ---
+# This function adds all private SSH keys from the ~/.ssh directory to the ssh-agent
+ssa() {
+    for key in ~/.ssh/id_*[^pub]; do   # Loop through all private SSH keys (ignores public keys)
+        ssh-add "$key"  # Add each key to the agent
+    done
+}
+
+# --- Edit the Last File Opened in Nvim ---
+# This function opens the last file edited in Nvim, jumping to the last edited position
+edit_last_file() {
+    nvim "+normal! g'0" ""  # Open the last edited file in Nvim and go to the last position
+}
+
+# --- FZF History Execution ---
+# This function allows you to interactively select a previous command from history and execute it
+fzf_history() {
+    eval $( ([ -n "$ZSH_NAME" ] && fc -l 1 || history) | fzf +s --tac | gsed -r 's/ *[0-9]*\*? *//' | gsed -r 's/\\/\\\\/g')
+}
+
+# --- FZF History Edit (Without Execution) ---
+# This function allows you to interactively select a previous command from history and put it in the buffer (without executing)
+fzf_history_edit() {
+    print -z $( ([ -n "$ZSH_NAME" ] && fc -l 1 || history) | fzf +s --tac | gsed -r 's/ *[0-9]*\*? *//' | gsed -r 's/\\/\\\\/g')
+}
+
+# --- Sudo "Fire-Fuck-Sake" (Re-run Last Command with Sudo + Safety Check) ---
+# This function re-runs the last command with sudo and adds a safety check for potentially dangerous commands (like rm, dd, mv)
+ffs() {
+    local last_cmd=$(fc -ln -1)  # Get the last command executed
+    [[ -z $last_cmd ]] && { echo "No previous command found."; return 1 }  # If no command, return error
+
+    # If the command is potentially dangerous, prompt for confirmation
+    if [[ "$last_cmd" =~ ^(rm|dd|mv|reboot|shutdown) ]]; then
+        echo "⚠️ Warning: Potentially dangerous command: $last_cmd"
+        read -r "confirmation?Do you want to continue with sudo? (y/N) "
+        [[ ! $confirmation =~ ^[Yy]$ ]] && { echo "Cancelled."; return 1 }  # Cancel if user doesn't confirm
+    fi
+
+    echo "Running with sudo: $last_cmd"
+    eval "sudo $last_cmd"  # Re-run the command with sudo
+}
+
+# --- GitHub Web Utilities ---
+# Get 'owner/repo' from origin
+function repo_name() {
+  git remote get-url origin 2>/dev/null | sed -E 's/.*github.com[:\/](.*)\.git$/\1/'  # Extract owner/repo from GitHub remote URL
+}
+
+# Opens the PR page for the current branch on GitHub
+function pr_open() {
+  local repo=$(repo_name)  # Get repo name
+  local branch=$(git symbolic-ref --short HEAD 2>/dev/null)  # Get current branch name
+  [[ -z "$repo" || -z "$branch" ]] && { echo "Error: Not a GitHub repo/branch."; return 1 }  # Error handling
+
+  echo "Opening GitHub PR for $branch..."
+  open "https://github.com/$repo/pull/new/$branch"  # Open PR page for the current branch
+}
+
+# Opens GitHub Actions for the current branch
+function github_actions_open() {
+  local repo=$(repo_name)  # Get repo name
+  local branch=$(git symbolic-ref --short HEAD 2>/dev/null)  # Get current branch name
+  [[ -z "$repo" || -z "$branch" ]] && { echo "Error: Not a GitHub repo/branch."; return 1 }  # Error handling
+  
+  open "https://github.com/$repo/actions?query=branch%3A$branch"  # Open GitHub Actions for the current branch
+}
+
+# --- Interactive Git Add ---
+# This function allows you to interactively select files to add to git using fzf
+# Requires: fzf and `brew install expect` (for unbuffer)
+function git_interactive_add() {
+  local selected
+  selected=$(git status -s | fzf -m --ansi --preview="echo {} | awk '{print \$2}' | xargs git diff --color" | awk '{print $2}')  # Select files interactively
+
+  if [[ -n "$selected" ]]; then
+    echo "$selected" | xargs git add  # Add selected files to staging
+    echo "✅ Added: $(echo $selected | tr '\n' ' ')"  # Confirm added files
+    git status -s  # Show the updated git status
+  fi
+}
+
+# --- Improved C++ Runner ---
+# This function compiles and runs a C++ file, cleaning up the binary after execution
+function runcpp() {
+  local source_file="$1"
+  local output_file="${source_file%.*}_bin"
+
+  if [[ -f "$source_file" ]]; then
+    echo "🔨 Compiling $source_file..."
+    if g++ -O2 "$source_file" -o "$output_file"; then  # Compile the source file
+      echo "🚀 Running..."
+      ./"$output_file"  # Run the compiled binary
+      rm "$output_file"  # Clean up the binary after execution
+    else
+      echo "❌ Compilation failed."  # Handle compilation failure
+    fi
+  else
+    echo "Error: File $source_file not found."  # Handle file not found error
+  fi
+}

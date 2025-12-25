@@ -1,0 +1,28 @@
+
+# zsh: true
+
+# --- Copy Command Line Buffer to macOS Clipboard ---
+# This widget copies the current ZSH buffer (command line input) to the macOS clipboard
+pbcopy-buffer() {
+    # The `print -rn "$BUFFER"` command prints the current command buffer without adding a newline at the end
+    # `pbcopy` is used to copy the output to the clipboard
+    print -rn "$BUFFER" | pbcopy
+    
+    # Display a message in the ZSH line editor (ZLE) to confirm the action
+    zle -M "Copied buffer to clipboard: ${BUFFER}"
+}
+
+# Register the pbcopy-buffer widget with ZLE
+# This binds the widget to the key combination Ctrl+X, Ctrl+P
+zle -N pbcopy-buffer
+bindkey '^x^p' pbcopy-buffer  # Ctrl+X, Ctrl+P to copy the buffer to the clipboard
+
+# --- Paste Clipboard Content in Reverse Order ---
+# This function pastes the content of the macOS clipboard and reverses the order of lines
+# It uses `pbpaste` to get the clipboard contents, then uses `awk` to reverse the lines
+function pbpaste_reverse() {
+    # `pbpaste` retrieves clipboard content, which is piped to `awk`
+    # `awk` stores each line in the `line` array, then prints the lines in reverse order
+    pbpaste | awk '{line[NR] = $0} END {for (i=NR; i>0; i--) print line[i]}'
+}
+

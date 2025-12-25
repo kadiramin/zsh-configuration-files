@@ -1,0 +1,242 @@
+# zsh: true
+
+
+# --- Key Widgets and Keymap Setup ---
+# This section sets up ZLE widgets and their keybindings
+afu_zles=( \
+  self-insert backward-delete-char backward-kill-word kill-line \
+  kill-whole-line kill-word magic-space yank \
+)
+
+# Autoload necessary keymap and widget functions
+autoload +X keymap+widget
+
+# The following block is responsible for defining and initializing the keymap+widget functions
+() {
+  setopt localoptions extendedglob no_shwordsplit  # Improve globbing and prevent split in function names
+  local code=${(S)${functions[keymap+widget]/for w in *
+  do
+    /for w in $afu_zles
+    do
+  }/(#b)(\$w-by-keymap \(\) \{*\})/
+  eval \${\${\${\"\$(echo \'$match\')\"}/\\\$w/\$w}//\\\$WIDGET/\$w}
+  }
+  eval "function afu-keymap+widget () { $code }"
+}
+
+# --- Installation of auto-fu features ---
+afu-install () {
+  # Ensure the required features are installed and initialized
+  zstyle -t ':auto-fu:var' misc-installed-p || {
+    zmodload zsh/parameter 2>/dev/null || {
+      echo 'auto-fu:zmodload error. exiting.' >&2
+      exit -1
+    }
+    afu-install-isearchmap  # Install search map for history
+    afu-install-eof         # Install EOF (End Of File) handling
+  } always {
+    zstyle ':auto-fu:var' misc-installed-p yes  # Mark installation as complete
+  }
+
+  # Set up keybindings for auto-fu keymap
+  bindkey -N afu emacs
+  { "$@" }
+  bindkey -M afu "^I" afu+complete-word  # Completion for tab key
+  bindkey -M afu "^M" afu+accept-line   # Accept line (Enter key)
+  bindkey -M afu "^J" afu+accept-line   # Accept line (Shift+Enter key)
+  bindkey -M afu "^O" afu+accept-line-and-down-history
+  bindkey -M afu "^[a" afu+accept-and-hold
+  bindkey -M afu "^X^[" afu+vi-cmd-mode
+
+  # Set up vi keybindings for `afu-vicmd` keymap
+  bindkey -N afu-vicmd vicmd
+}
+
+# --- Interactive Search Map ---
+afu-install-isearchmap () {
+  zstyle -t ':auto-fu:var' isearchmap-installed-p || {
+    # Install keybindings for search map if not already installed
+    [[ -n ${(M)keymaps:#isearch} ]] && bindkey -M isearch "^M" afu+accept-line
+  } always {
+    zstyle ':auto-fu:var' isearchmap-installed-p yes
+  }
+}
+
+# --- End Of File (EOF) Handling ---
+afu-install-eof () {
+  zstyle -t ':auto-fu:var' eof-installed-p || {
+    # Handle EOF behavior by either ignoring it or exiting
+    if [[ "$options[ignoreeof]" == "on" ]]; then
+      bindkey "^D" afu+orf-ignoreeof-deletechar-list
+    else
+      setopt ignoreeof
+      bindkey "^D" afu+orf-exit-deletechar-list
+    fi
+  } always {
+    zstyle ':auto-fu:var' eof-installed-p yes
+  }
+}
+
+# --- Main auto-fu Logic ---
+auto-fu-init () {
+  # Initialize the auto-fu setup for interactive use
+  local auto_fu_init_p=1
+  local ps
+  {
+    local -a region_highlight
+    local afu_in_p=0
+    local afu_paused_p=0
+
+    zstyle -s ':auto-fu:var' postdisplay ps  # Get postdisplay style setting
+    [[ -z ${ps} ]] || POSTDISPLAY="$ps"     # Set postdisplay text if defined
+
+    afu-recursive-edit-and-accept  # Start the recursive editing with auto-fu
+    zle -I  # Re-initialize ZLE
+  } always {
+    [[ -z ${ps} ]] || POSTDISPLAY=''
+  }
+}
+zle -N auto-fu-init  # Create ZLE function for auto-fu initialization
+
+# --- Keymap Switching (auto-fu On/Off) ---
+auto-fu-on  () { with-afu-gvars zle -K afu   }; zle -N auto-fu-on  # Turn on auto-fu
+auto-fu-off () { with-afu-gvars zle -K emacs }; zle -N auto-fu-off # Turn off auto-fu and return to emacs keymap
+
+with-afu-gvars () {
+  (( auto_fu_init_p == 1 )) && {
+    zle -M "Sorry, can't turn on or off if auto-fu-init is in effect."; return
+  }
+  typeset -g afu_in_p=0
+  typeset -g afu_paused_p=0
+  region_highlight=()  # Reset highlighting
+  "$@"  # Run the provided function
+}
+
+# --- Keybinding for Auto-fu Toggle ---
+afu-register-zle-toggle () {
+  local var="$1"
+  local toggle="$2"
+  local activate="$3"
+  local deactivate="$4"
+  eval "$(cat <<EOT
+    $toggle () {
+      (( $var == 1 )) && { $var=0; return }
+      (( $var != 1 )) && { $var=1; return }
+    }
+    $activate () { $var=0 }
+    $deactivate () { $var=1 }
+    zle -N $toggle; zle -N $activate; zle -N $deactivate
+EOT
+  )"
+}
+
+# --- Recursive Edit and Accept ---
+afu-recursive-edit-and-accept () {
+  # Handle recursive edit and acceptance in auto-fu mode
+  local -a __accepted
+  zle recursive-edit -K afu || { afu-reset; zle -R ''; zle send-break; return }
+  [[ -n ${__accepted} ]] &&
+  (( ${#${(M)afu_accept_lines:#${__accepted[1]}}} > 1 )) &&
+  { zle "${__accepted[@]}"} || { zle accept-line }
+}
+
+# --- Keymap and Widget Management ---
+afu-track-keymap () {
+  # Track changes in keymap state and react accordingly
+  typeset -gA afu_keymap_state
+  local new="${KEYMAP}"
+  local old="${2}"
+  local fun="${3}"
+  { afu-track-keymap-skip-p "$old" "$new" } && return
+  local cur="${afu_keymap_state[cur]-}"
+  afu_keymap_state+=(old "${afu_keymap_state[cur]-}")
+  afu_keymap_state+=(cur "$old $new")
+  [[ "$new" == 'main' ]] && [[ -n "$cur" ]] && {
+    local -a tmp; tmp=("${(Q)=cur}")
+    afu_keymap_state+=(cur "$old $tmp[1]")
+    "$fun" "$tmp[1]"
+  }
+}
+
+afu-track-keymap-skip-p () {
+  # Skip keymap transitions based on specific rules
+  local old="$1"
+  local new="$2"
+  { [[ -z "$old" ]] || [[ -z "$new" ]] } && return 0
+  local -a ms; ms=(); zstyle -a ':auto-fu:var' track-keymap-skip ms
+  (( ${#ms} )) || return -1
+  local m; for m in $ms; do
+    [[ "$old" == "$m" ]] && return 0
+    [[ "$new" == "$m" ]] && return 0
+  done
+  return -1
+}
+
+# --- Post-Display and Highlighting ---
+afu-comppre () {
+  # Pre-function for completing words (completion hook)
+}
+
+afu-comppost () {
+  # Post-function for handling too many matches and displaying completion info
+  ((compstate[list_lines] + BUFFERLINES + 2 > LINES)) && {
+    compstate[list]=''
+    zle -M "$compstate[list_lines]($compstate[nmatches]) too many matches..."
+  }
+
+  typeset -g afu_one_match_p=
+  (( $compstate[nmatches] == 1 )) && afu_one_match_p=t
+}
+
+# --- Completion and Accepting Line ---
+afu+complete-word () {
+  afu-clearing-maybe
+  { afu-able-p } || { zle complete-word; return; }
+
+  with-afu-completer-vars;
+  if ((afu_in_p == 1)); then
+    afu_in_p=0; CURSOR="$cursor_new"
+    zle complete-word
+  else
+    zle complete-word
+  fi
+}
+
+# --- Initialize Auto-fu Setup ---
+zle -N auto-fu  # Create the auto-fu widget for interactive use
+
+# --- Cleanup (For Old Files and Compiled Files) ---
+afu-clean () {
+  local d=${1:-~/.zsh}
+  rm -f ${d}/{auto-fu,auto-fu.zwc*(N)}  # Clean up auto-fu compiled files
+}
+
+# --- Compile auto-fu for Faster Startups ---
+afu-zcompile () {
+  local afu_zcompiling_p=t
+  local s=${1:?Please specify the source file itself.}
+  local d=${2:?Please specify the directory for the zcompiled file.}
+  local g=${d}/auto-fu
+  setopt localoptions extendedglob no_shwordsplit
+
+  echo "** zcompiling auto-fu in ${d} for faster startups..."
+  { source ${s} >/dev/null 2>&1 }  # Paranoid source check
+  echo "mkdir -p ${d}" | sh -x
+  afu-clean ${d}  # Clean up before recompiling
+  afu-install-installer
+  echo "* writing code ${g}"
+  {
+    local -a fs
+    : ${(A)fs::=${(Mk)functions:#(*afu*|*auto-fu*|*-by-keymap)}}
+    echo "#!zsh"
+    echo "# Generated from auto-fu.zsh. DO NOT EDIT."; echo
+    echo "$(functions ${fs:#(afu-register-*|afu-initialize-*|afu-keymap+widget|afu-clean|afu-install-installer|auto-fu-zcompile)})"
+  }>! ${d}/auto-fu
+  echo -n '* '; autoload -U zrecompile && zrecompile -p -R ${g} && {
+    zmodload zsh/datetime
+    touch --date="$(strftime "%F %T" $((EPOCHSECONDS - 120)))" ${g}
+    [[ -z ${AUTO_FU_ZCOMPILE_NOKEEP-} ]] || { echo "rm -f ${g}" | sh -x }
+    echo "** All done."
+  }
+}
+
