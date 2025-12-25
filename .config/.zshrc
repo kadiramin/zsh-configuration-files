@@ -1,9 +1,9 @@
 # zsh: true
 
-# Path to your configuration folder
+# Path to configuration folder
 ZSH_CONFIG_DIR="$HOME/.zsh"
 
-# Debugging: Sourcing each .zsh file individually
+
 if [ -d "$ZSH_CONFIG_DIR" ]; then
         source "$ZSH_CONFIG_DIR/00_env"
         source "$ZSH_CONFIG_DIR/aliases"
@@ -22,5 +22,5 @@ if [ -d "$ZSH_CONFIG_DIR" ]; then
 fi
 
 
-# macOS Terminal.app support (keep this at the end)
+# macOS Terminal.app support 
 [ -r "/etc/zshrc_$TERM_PROGRAM" ] && . "/etc/zshrc_$TERM_PROGRAM"
