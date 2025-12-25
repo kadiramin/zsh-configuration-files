@@ -1,5 +1,4 @@
-
-# zsh: true
+# clipboard: true
 
 # --- Copy Command Line Buffer to macOS Clipboard ---
 # This widget copies the current ZSH buffer (command line input) to the macOS clipboard

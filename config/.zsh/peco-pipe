@@ -1,0 +1,25 @@
+# zsh: true
+
+# Generic pipe function to interactive filter (peco)
+# Usage example:
+#   ls | p rm      -> Select a file from the 'ls' output and pass it to 'rm'
+#   git branch | p git checkout  -> Select a branch from 'git branch' and check it out
+
+function p() {
+  # Verify if peco is installed (peco is an interactive filtering tool)
+  if (( ! $+commands[peco] )); then
+    # If peco isn't installed, display a message and exit the function
+    echo "peco is not installed. Install with: brew install peco"
+    return 1
+  fi
+
+  # Declare a local variable to hold the selected line from peco
+  local line
+  
+  # Pipe the output of the current command to peco, allowing interactive filtering
+  # peco lets you select a line from the input and return it
+  peco | while read line; do
+    # Execute the provided arguments (like 'rm', 'git checkout') with the selected line as input
+    "$@" "$line"
+  done
+}

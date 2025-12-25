@@ -1,4 +1,4 @@
-# zsh: true
+# functions: true
 
 # --- Extract Archives ---
 # This function extracts different types of archives (e.g., tar, zip, gz, etc.) based on the file extension

@@ -1,0 +1,35 @@
+# zsh: true
+
+# Interactive SSH Host Selector using fzf
+# This function allows the user to interactively select an SSH host from their
+# SSH configuration file using fzf (fuzzy finder).
+
+function ssh-fzf() {
+  local ssh_config="$HOME/.ssh/config"
+  
+  # Ensure the config file exists to prevent errors
+  if [[ ! -f "$ssh_config" ]]; then
+    # If the SSH config file doesn't exist, print an error message and exit
+    echo "No SSH config found at $ssh_config"
+    return 1
+  fi
+
+  # Extract Host names, excluding wildcards
+  # Uses 'grep' to find lines starting with 'Host' (case-insensitive),
+  # and excludes lines with wildcard hosts (e.g., '*').
+  # 'awk' is used to reliably extract the host names (the second word in each line).
+  local selected_host=$(grep -i "^Host " "$ssh_config" | grep -v '*' | awk '{print $2}' | fzf --query "$LBUFFER" --height 40% --reverse)
+
+  # If a host is selected, prepare the SSH command and accept the line
+  if [[ -n "$selected_host" ]]; then
+    BUFFER="ssh ${selected_host}"
+    zle accept-line  # Accept the line (execute the command)
+  fi
+  
+  # Reset the prompt after the widget execution
+  zle reset-prompt
+}
+
+# Register the widget and bind it to Ctrl+\
+zle -N ssh-fzf  # This creates a new Zsh widget for the function
+bindkey '^\\' ssh-fzf  # Bind the function to Ctrl+\ key combination

@@ -1,4 +1,4 @@
-# zsh: true
+# fzf: true
 
 # --- fzf Configuration ---
 # Source fzf completion and key-bindings if fzf is installed via Homebrew

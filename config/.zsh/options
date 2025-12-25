@@ -1,0 +1,26 @@
+# zsh: true
+
+# Behaviors
+
+# Initialize and configure completion system
+autoload -U compinit && compinit
+# Enable menu-based completion, where you can select the completion option using arrow keys
+zstyle ':completion:*' menu yes select
+
+# Check locale settings, if locale command isn't available or if LC_CTYPE is already set to UTF-8, enable combining characters for Zsh
+if [[ ! -x /usr/bin/locale ]] || [[ "$(locale LC_CTYPE)" == "UTF-8" ]]; then
+    # Enable support for combining characters in Zsh (important for languages with special characters)
+    setopt COMBINING_CHARS
+fi
+
+# Disable the logging of commands in the history file
+disable log
+
+# Disable the beep sound when an error occurs
+unsetopt BEEP
+
+# Disable automatic correction of mistyped commands
+unsetopt correct
+
+# Disable automatic correction for all commands (useful to avoid unwanted changes in the input)
+unsetopt correctall

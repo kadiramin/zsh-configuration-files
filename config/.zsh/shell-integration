@@ -1,0 +1,69 @@
+# zsh: true
+
+# Shell Integration for iTerm2, VS Code, and Ghostty (OSC 133)
+# Tracks command execution to prevent prompt corruption and enable UI markers.
+# This script enables custom terminal integrations using OSC 133 escape codes to
+# interact with the terminal environment in specific ways (e.g., updating prompt appearance,
+# reporting command status, etc.).
+
+_prompt_executing=""
+
+# Function called before each prompt is displayed (precmd hook)
+function __prompt_precmd() {
+    local ret="$?" # Capture the exit status of the last command
+
+    # 1. Save and mark prompt boundaries
+    if [[ "$_prompt_executing" != "0" ]]; then
+      # Save the original PS1 (primary prompt) and PS2 (secondary prompt)
+      _PROMPT_SAVE_PS1="$PS1"
+      _PROMPT_SAVE_PS2="$PS2"
+
+      # OSC 133;P: Start of prompt | OSC 133;B: End of prompt (Start of input)
+      # This sets the start and end of the prompt with special escape codes for UI integration
+      PS1=$'%{\e]133;P;k=i\a%}'$PS1$'%{\e]133;B\a\e]122;> \a%}'  # Start and end of prompt
+      PS2=$'%{\e]133;P;k=s\a%}'$PS2$'%{\e]133;B\a%}'  # Secondary prompt (e.g., continuation prompts)
+    fi
+
+    # 2. OSC 133;D: Report the exit status of the completed command
+    # When a command is finished, it sends its exit status back to the terminal UI
+    if [[ -n "$_prompt_executing" ]]; then
+       # This reports the exit status (ret) of the last command executed
+       # The ID of the shell ($$) is used for identifying the current session
+       printf "\033]133;D;%s;aid=%s\007" "$ret" "$$"
+    fi
+
+    # 3. OSC 133;A: Mark the beginning of a fresh line
+    # This triggers an escape code that signifies the start of a fresh command line
+    printf "\033]133;A;cl=m;aid=%s\007" "$$"
+
+    # Reset the _prompt_executing flag to 0, as the prompt is ready to display
+    _prompt_executing=0
+}
+
+# Function called before executing any command (preexec hook)
+function __prompt_preexec() {
+    # Restore the original PS1 and PS2 values before the command is executed
+    # This prevents the prompt escape codes from being echoed with the command
+    PS1="$_PROMPT_SAVE_PS1"
+    PS2="$_PROMPT_SAVE_PS2"
+
+    # OSC 133;C: Mark the start of command output
+    # This sends an escape code to signal that the command is starting to run
+    printf "\033]133;C;\007"
+    
+    # Set the _prompt_executing flag to 1, indicating that a command is in execution
+    _prompt_executing=1
+}
+
+# Add hooks to the Zsh shell functions `preexec` and `precmd` safely
+# This ensures that the functions are only added once, even after shell reloads
+
+# The `preexec` hook is used to run `__prompt_preexec` before any command is executed
+if [[ -z "${preexec_functions[(r)__prompt_preexec]}" ]]; then
+  preexec_functions+=(__prompt_preexec)
+fi
+
+# The `precmd` hook is used to run `__prompt_precmd` before displaying the prompt
+if [[ -z "${precmd_functions[(r)__prompt_precmd]}" ]]; then
+  precmd_functions+=(__prompt_precmd)
+fi

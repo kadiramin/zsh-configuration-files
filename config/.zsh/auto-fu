@@ -1,5 +1,4 @@
-# zsh: true
-
+# auto-fu: true
 
 # --- Key Widgets and Keymap Setup ---
 # This section sets up ZLE widgets and their keybindings

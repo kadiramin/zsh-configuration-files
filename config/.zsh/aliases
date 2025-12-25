@@ -1,6 +1,5 @@
 # zsh: true
 
-
 # --- Navigation ---
 alias ls='ls -G'
 alias l='ls -lah'

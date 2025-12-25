@@ -1,0 +1,31 @@
+# zsh: true
+
+# Interactive History Search using fzf
+# This function allows searching through Zsh command history with fuzzy search (fzf)
+function history-fzf() {
+  local tac_cmd
+
+  # macOS (BSD) uses 'tail -r' instead of the GNU 'tac'
+  # Check if 'tac' is available and set the appropriate command for reversing output
+  if (( $+commands[tac] )); then
+    tac_cmd="tac"  # 'tac' is used for reversing input on Linux systems
+  else
+    tac_cmd="tail -r"  # On macOS (BSD), we use 'tail -r' to reverse output
+  fi
+
+  # Search through the history and populate the buffer
+  # 'history -n 1' loads the most recent history line, including those added after the session started
+  # The history is reversed (using 'tac' or 'tail -r'), then piped into 'fzf' for interactive search
+  # The '--query' option initializes the search with the current text in the buffer
+  BUFFER=$(history -n 1 | eval $tac_cmd | fzf --query "$LBUFFER" --height 40% --reverse)
+
+  # Move the cursor to the end of the buffer after the search
+  CURSOR=$#BUFFER
+
+  # Reset the prompt after execution
+  zle reset-prompt
+}
+
+# Register the widget and bind it to the Ctrl+R key for interactive history search
+zle -N history-fzf  # Define the widget
+bindkey '^r' history-fzf  # Bind the widget to Ctrl+R for easy invocation
