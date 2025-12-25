@@ -1,0 +1,39 @@
+# zsh-configuration-files
+
+A lightweight Zsh configuration that avoids the overhead of Oh My Zsh.
+All necessary initializations for the prompt and fuzzy finder are already included in the provided configuration files. To get started, you only need to install the following dependencies via Homebrew.
+
+## Prerequisites
+1. Install Homebrew
+
+Ensure that the Homebrew package manager is installed on your system. If it’s not, follow the instructions on Homebrew’s website
+ to install it.
+
+2. Install Required Packages
+
+Use Homebrew to install the tools required for this configuration to function correctly:
+
+- starship: Cross-shell prompt engine.
+
+- fzf: Fuzzy finder for command history and file searches.
+
+Run this command to install both packages:
+
+```
+brew install starship fzf
+```
+Installation
+1. Clone the Repository
+
+Clone this repository directly to your home directory:
+```
+git clone https://github.com/your-username/zsh-configuration-files.git ~/
+```
+
+2. Copy the Configuration Files
+
+Once the repository is cloned, copy the configuration files to your home directory. The .zshrc file is already set up to source these tools automatically on startup.
+
+# Example: Copy the config to your home directory
+cp ~/zsh-configuration-files/.zshrc ~/.zshrc
+source ~/.zshrc
